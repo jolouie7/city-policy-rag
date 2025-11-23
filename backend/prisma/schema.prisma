@@ -1,0 +1,37 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [pgvector(map: "vector")]
+}
+
+model Document {
+  id         String   @id @default(cuid())
+  title      String
+  filename   String
+  uploadedAt DateTime @default(now())
+  metadata   Json?
+  chunks     Chunk[]
+
+  @@index([uploadedAt])
+}
+
+model Chunk {
+  id         String                       @id @default(cuid())
+  documentId String
+  content    String                       @db.Text
+  pageNumber Int
+  chunkIndex Int
+  embedding  Unsupported("vector(1536)")?
+  createdAt  DateTime                     @default(now())
+  document   Document                     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([pageNumber])
+}
