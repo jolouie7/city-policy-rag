@@ -1,10 +1,20 @@
-import express = require("express");
+import express from "express";
 import type { Request, Response } from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+
+dotenv.config({ path: ".env" });
 
 const app = express();
 const PORT = process.env["PORT"] ?? 8080;
 
 // Middleware
+app.use(
+  cors({
+    origin: "http://localhost:3000",
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
