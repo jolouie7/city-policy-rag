@@ -2,6 +2,7 @@ import express from "express";
 import type { Request, Response } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import documentsRouter from "./routes/documents.js";
 
 dotenv.config({ path: ".env" });
 
@@ -11,7 +12,7 @@ const PORT = process.env["PORT"] ?? 8080;
 // Middleware
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
     credentials: true,
   })
 );
@@ -26,6 +27,9 @@ app.get("/", (_req: Request, res: Response) => {
 app.get("/health", (_req: Request, res: Response) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
+
+// API Routes
+app.use("/api/documents", documentsRouter);
 
 // Start server
 app.listen(PORT, () => {

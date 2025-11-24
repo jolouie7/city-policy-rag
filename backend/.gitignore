@@ -35,3 +35,4 @@ coverage/
 .cache/
 CLAUDE.md
 /src/generated/prisma
+uploads/
