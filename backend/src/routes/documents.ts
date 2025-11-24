@@ -1,16 +1,17 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
 import { upload } from "../middleware/upload.js";
-import {
-  extractTextFromPDF,
-  deleteTempFile,
-} from "../services/pdf-processor.js";
-import { chunkText } from "../services/chunker.js";
+import { deleteTempFile } from "../services/pdf-processor.js";
 import { prisma } from "../db/client.js";
 import type { UploadResponse } from "../types/document.types.js";
 import { generateEmbeddings } from "../services/embeddings.js";
+import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
+import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 
 const router = Router();
+
+const CHUNK_SIZE = parseInt(process.env.CHUNK_SIZE || "2400");
+const CHUNK_OVERLAP = parseInt(process.env.CHUNK_OVERLAP || "480");
 
 /**
  * POST /api/documents/upload
@@ -29,27 +30,48 @@ router.post(
       const filePath = req.file.path;
       const originalFilename = req.file.originalname;
 
-      // Extract text from PDF
-      const { fullText, metadata } = await extractTextFromPDF(filePath);
+      // Load PDF using LangChain - extracts text page by page
+      const loader = new PDFLoader(filePath);
+      const pages = await loader.load();
 
-      // Generate title from filename or PDF metadata
-      const title = metadata.title || originalFilename.replace(".pdf", "");
+      // Generate title from filename
+      const title = originalFilename.replace(".pdf", "");
 
-      // Chunk the extracted text
-      const chunks = chunkText(fullText);
+      const textSplitter = new RecursiveCharacterTextSplitter({
+        chunkSize: CHUNK_SIZE,
+        chunkOverlap: CHUNK_OVERLAP,
+      });
 
-      // Create document and chunks in database
+      // Track chunks across all pages
+      const allChunks = [];
+      let globalChunkIndex = 0;
+
+      // Process each page and split into chunks
+      for (const page of pages) {
+        const pageNumber = page.metadata.loc?.pageNumber ?? 1;
+        const pageText = page.pageContent;
+
+        // Split page text into chunks
+        const textChunks = await textSplitter.splitText(pageText);
+
+        // Add page info to each chunk
+        for (const chunkText of textChunks) {
+          allChunks.push({
+            content: chunkText,
+            pageNumber: pageNumber,
+            chunkIndex: globalChunkIndex++,
+          });
+        }
+      }
+
+      // Save to database
       const document = await prisma.document.create({
         data: {
           title,
           filename: originalFilename,
-          metadata: metadata as any, // Prisma handles JSON serialization
+          metadata: { pageCount: pages.length },
           chunks: {
-            create: chunks.map((chunk) => ({
-              content: chunk.content,
-              pageNumber: chunk.pageNumber,
-              chunkIndex: chunk.chunkIndex,
-            })),
+            create: allChunks,
           },
         },
         include: {
@@ -57,7 +79,7 @@ router.post(
         },
       });
 
-      // Delete temporary file
+      // Clean up temp file
       deleteTempFile(filePath);
 
       // Return response
@@ -236,7 +258,7 @@ router.delete("/:id", async (req: Request, res: Response) => {
       where: { id },
     });
 
-    res.status(204).send({ message: "Document deleted successfully" });
+    res.status(200).json({ message: "Document deleted successfully" });
   } catch (error) {
     console.error("Delete document error:", error);
     res.status(500).json({
