@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import documentsRouter from "./routes/documents.js";
+import ragRouter from "./routes/rag.js";
 
 dotenv.config({ path: ".env" });
 
@@ -30,6 +31,7 @@ app.get("/health", (_req: Request, res: Response) => {
 
 // API Routes
 app.use("/api/documents", documentsRouter);
+app.use("/api/rag", ragRouter);
 
 // Start server
 app.listen(PORT, () => {

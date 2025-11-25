@@ -37,7 +37,7 @@ router.post(
       // Generate title from filename
       const title = originalFilename.replace(".pdf", "");
 
-      const textSplitter = new RecursiveCharacterTextSplitter({
+      const splitter = new RecursiveCharacterTextSplitter({
         chunkSize: CHUNK_SIZE,
         chunkOverlap: CHUNK_OVERLAP,
       });
@@ -52,7 +52,7 @@ router.post(
         const pageText = page.pageContent;
 
         // Split page text into chunks
-        const textChunks = await textSplitter.splitText(pageText);
+        const textChunks = await splitter.splitText(pageText);
 
         // Add page info to each chunk
         for (const chunkText of textChunks) {
