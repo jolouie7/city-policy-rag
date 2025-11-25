@@ -17,6 +17,16 @@ export default function UploadPage() {
     loadDocuments();
   }, []);
 
+  // Debug: Log documents state changes to help identify duplicate IDs
+  useEffect(() => {
+    const ids = documents.map((d) => d.id);
+    const uniqueIds = new Set(ids);
+    if (ids.length !== uniqueIds.size) {
+      console.error("❌ Duplicate document IDs detected:", ids);
+      console.error("Documents:", documents);
+    }
+  }, [documents]);
+
   const loadDocuments = async () => {
     try {
       const docs = await documentsAPI.list();
@@ -34,7 +44,12 @@ export default function UploadPage() {
 
     try {
       const uploadedDoc = await documentsAPI.upload(file);
-      setDocuments([uploadedDoc, ...documents]);
+      // Use functional update to avoid stale closure
+      setDocuments((prev) => {
+        // Remove any existing document with same ID (deduplication)
+        const filtered = prev.filter((doc) => doc.id !== uploadedDoc.id);
+        return [uploadedDoc, ...filtered];
+      });
       toast.success(`Successfully uploaded ${file.name}`);
     } catch (err) {
       setError("Failed to upload file");
@@ -52,7 +67,8 @@ export default function UploadPage() {
 
     try {
       await documentsAPI.delete(id);
-      setDocuments(documents.filter((doc) => doc.id !== id));
+      // Use functional update to avoid stale closure
+      setDocuments((prev) => prev.filter((doc) => doc.id !== id));
       toast.success("Document deleted successfully");
     } catch (err) {
       setError("Failed to delete document");

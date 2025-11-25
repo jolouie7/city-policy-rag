@@ -1,9 +1,9 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { upload } from "../middleware/upload.js";
 import { deleteTempFile } from "../services/pdf-processor.js";
 import { prisma } from "../db/client.js";
-import type { UploadResponse } from "../types/document.types.js";
 import { generateEmbeddings } from "../services/embeddings.js";
 import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
@@ -82,13 +82,24 @@ router.post(
       // Clean up temp file
       deleteTempFile(filePath);
 
-      // Return response
-      const response: UploadResponse = {
-        documentId: document.id,
-        title: document.title,
+      // Check if any chunks have embeddings
+      const embeddingsGenerated = document.chunks.some(
+        (chunk) => (chunk as any).embedding != null
+      );
+
+      // Return response matching frontend Document type
+      const response = {
+        id: document.id,
         filename: document.filename,
-        chunkCount: document.chunks.length,
-        uploadedAt: document.uploadedAt,
+        filepath: "", // Not stored, but required by frontend
+        createdAt: document.uploadedAt.toISOString(),
+        embeddingsGenerated,
+        chunks: document.chunks.map((chunk: any) => ({
+          id: chunk.id,
+          content: chunk.content,
+          chunkIndex: chunk.chunkIndex,
+          hasEmbedding: chunk.embedding != null,
+        })),
       };
 
       res.status(201).json(response);
@@ -184,14 +195,9 @@ router.post("/:id/embed", async (req: Request, res: Response) => {
 router.get("/", async (req: Request, res: Response) => {
   try {
     const documents = await prisma.document.findMany({
-      select: {
-        id: true,
-        title: true,
-        filename: true,
-        uploadedAt: true,
-        metadata: true,
-        _count: {
-          select: { chunks: true },
+      include: {
+        chunks: {
+          orderBy: { chunkIndex: "asc" },
         },
       },
       orderBy: {
@@ -199,7 +205,24 @@ router.get("/", async (req: Request, res: Response) => {
       },
     });
 
-    res.json(documents);
+    // Transform to match frontend Document type
+    const response = documents.map((doc) => ({
+      id: doc.id,
+      filename: doc.filename,
+      filepath: "", // Not stored, but required by frontend
+      createdAt: doc.uploadedAt.toISOString(),
+      embeddingsGenerated: doc.chunks.some(
+        (chunk: any) => chunk.embedding != null
+      ),
+      chunks: doc.chunks.map((chunk: any) => ({
+        id: chunk.id,
+        content: chunk.content,
+        chunkIndex: chunk.chunkIndex,
+        hasEmbedding: chunk.embedding != null,
+      })),
+    }));
+
+    res.json(response);
   } catch (error) {
     console.error("List documents error:", error);
     res.status(500).json({
@@ -260,6 +283,14 @@ router.delete("/:id", async (req: Request, res: Response) => {
 
     res.status(200).json({ message: "Document deleted successfully" });
   } catch (error) {
+    // Handle Prisma "record not found" error
+    if (
+      error instanceof PrismaClientKnownRequestError &&
+      error.code === "P2025"
+    ) {
+      return res.status(404).json({ error: "Document not found" });
+    }
+
     console.error("Delete document error:", error);
     res.status(500).json({
       error: "Failed to delete document",

@@ -34,9 +34,9 @@ export function DocumentList({
 
   return (
     <div className="space-y-3">
-      {documents.map((doc) => (
+      {documents.map((doc, index) => (
         <Card
-          key={doc.id}
+          key={doc.id || `doc-${index}`}
           className="p-5 sm:p-6 border-2 hover:shadow-md transition-all duration-200 hover:border-primary/20"
         >
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
@@ -56,7 +56,7 @@ export function DocumentList({
                 )}
               </div>
               <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                <span key={`uploaded-${doc.id}`}>
+                <span>
                   Uploaded:{" "}
                   {new Date(doc.createdAt).toLocaleDateString("en-US", {
                     month: "short",
@@ -67,7 +67,7 @@ export function DocumentList({
                   })}
                 </span>
                 {doc.chunks && (
-                  <span key={`chunks-${doc.id}`} className="font-medium">
+                  <span className="font-medium">
                     {doc.chunks.length}{" "}
                     {doc.chunks.length === 1 ? "chunk" : "chunks"}
                   </span>
@@ -78,7 +78,6 @@ export function DocumentList({
             <div className="flex flex-wrap gap-2 sm:flex-shrink-0">
               {!doc.embeddingsGenerated && (
                 <Button
-                  key={`generate-embeddings-${doc.id}`}
                   variant="outline"
                   size="sm"
                   onClick={() => onGenerateEmbeddings(doc.id)}
@@ -88,7 +87,6 @@ export function DocumentList({
                 </Button>
               )}
               <Button
-                key={`delete-${doc.id}`}
                 variant="destructive"
                 size="sm"
                 onClick={() => onDelete(doc.id)}
