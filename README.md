@@ -2,6 +2,11 @@
 
 An AI-powered document Q&A system using Retrieval Augmented Generation (RAG) to enable intelligent querying of PDF documents with source citations.
 
+## Loom Demo
+
+Watch a walkthrough of City Policy RAG:  
+[▶️ Watch on Loom](https://www.loom.com/share/794e4e0aeb9d4c8c81b70511e85d24d6)
+
 ## Overview
 
 City Policy RAG is a full-stack application that allows users to upload PDF documents, generate vector embeddings, and chat with an AI assistant that answers questions based on the uploaded documents. The system uses semantic search to find relevant document chunks and provides accurate answers.
