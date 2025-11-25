@@ -1,17 +1,17 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { FileUpload } from '@/components/upload/FileUpload';
-import { DocumentList } from '@/components/upload/DocumentList';
-import { Separator } from '@/components/ui/separator';
-import { documentsAPI } from '@/lib/api';
-import type { Document } from '@/lib/types';
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
+import { FileUpload } from "@/components/upload/FileUpload";
+import { DocumentList } from "@/components/upload/DocumentList";
+import { Separator } from "@/components/ui/separator";
+import { documentsAPI } from "@/lib/api";
+import type { Document } from "@/lib/types";
 
 export default function UploadPage() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
     loadDocuments();
@@ -23,7 +23,7 @@ export default function UploadPage() {
       setDocuments(docs);
       setError(null);
     } catch (err) {
-      setError('Failed to load documents');
+      setError("Failed to load documents");
       console.error(err);
     }
   };
@@ -31,14 +31,14 @@ export default function UploadPage() {
   const handleUpload = async (file: File) => {
     setIsUploading(true);
     setError(null);
-    setSuccessMessage(null);
 
     try {
       const uploadedDoc = await documentsAPI.upload(file);
       setDocuments([uploadedDoc, ...documents]);
-      setSuccessMessage(`Successfully uploaded ${file.name}`);
+      toast.success(`Successfully uploaded ${file.name}`);
     } catch (err) {
-      setError('Failed to upload file');
+      setError("Failed to upload file");
+      toast.error("Failed to upload file");
       console.error(err);
     } finally {
       setIsUploading(false);
@@ -46,16 +46,17 @@ export default function UploadPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this document?')) {
+    if (!confirm("Are you sure you want to delete this document?")) {
       return;
     }
 
     try {
       await documentsAPI.delete(id);
       setDocuments(documents.filter((doc) => doc.id !== id));
-      setSuccessMessage('Document deleted successfully');
+      toast.success("Document deleted successfully");
     } catch (err) {
-      setError('Failed to delete document');
+      setError("Failed to delete document");
+      toast.error("Failed to delete document");
       console.error(err);
     }
   };
@@ -65,9 +66,10 @@ export default function UploadPage() {
       await documentsAPI.generateEmbeddings(id);
       // Reload documents to get updated embedding status
       await loadDocuments();
-      setSuccessMessage('Embeddings generated successfully');
+      toast.success("Embeddings generated successfully");
     } catch (err) {
-      setError('Failed to generate embeddings');
+      setError("Failed to generate embeddings");
+      toast.error("Failed to generate embeddings");
       console.error(err);
     }
   };
@@ -90,19 +92,15 @@ export default function UploadPage() {
           </div>
         )}
 
-        {successMessage && (
-          <div className="p-4 bg-green-500/10 text-green-700 dark:text-green-400 rounded-lg border border-green-500/20 shadow-sm">
-            {successMessage}
-          </div>
-        )}
-
         <FileUpload onUpload={handleUpload} disabled={isUploading} />
 
         {isUploading && (
           <div className="text-center py-6">
             <div className="inline-flex items-center gap-2 text-muted-foreground">
               <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-              <p className="text-sm font-medium">Uploading and processing document...</p>
+              <p className="text-sm font-medium">
+                Uploading and processing document...
+              </p>
             </div>
           </div>
         )}

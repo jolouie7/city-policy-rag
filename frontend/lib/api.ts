@@ -78,6 +78,14 @@ export const chatAPI = {
     });
   },
 
+  // Update a session
+  updateSession: async (sessionId: string, title: string): Promise<ChatSession> => {
+    return fetchAPI<ChatSession>(`/api/chat/sessions/${sessionId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ title }),
+    });
+  },
+
   // Delete a session
   deleteSession: async (sessionId: string): Promise<void> => {
     return fetchAPI<void>(`/api/chat/sessions/${sessionId}`, {

@@ -109,72 +109,6 @@ router.post(
 );
 
 /**
- * GET /api/documents
- * List all documents
- */
-router.get("/", async (req: Request, res: Response) => {
-  try {
-    const documents = await prisma.document.findMany({
-      select: {
-        id: true,
-        title: true,
-        filename: true,
-        uploadedAt: true,
-        metadata: true,
-        _count: {
-          select: { chunks: true },
-        },
-      },
-      orderBy: {
-        uploadedAt: "desc",
-      },
-    });
-
-    res.json(documents);
-  } catch (error) {
-    console.error("List documents error:", error);
-    res.status(500).json({
-      error: "Failed to fetch documents",
-      message: error instanceof Error ? error.message : "Unknown error",
-    });
-  }
-});
-
-/**
- * GET /api/documents/:id
- * Get a specific document with its chunks
- */
-router.get("/:id", async (req: Request, res: Response) => {
-  try {
-    const id = req.params.id;
-    if (!id) {
-      return res.status(400).json({ error: "Document ID is required" });
-    }
-
-    const document = await prisma.document.findUnique({
-      where: { id },
-      include: {
-        chunks: {
-          orderBy: { chunkIndex: "asc" },
-        },
-      },
-    });
-
-    if (!document) {
-      return res.status(404).json({ error: "Document not found" });
-    }
-
-    res.json(document);
-  } catch (error) {
-    console.error("Get document error:", error);
-    res.status(500).json({
-      error: "Failed to fetch document",
-      message: error instanceof Error ? error.message : "Unknown error",
-    });
-  }
-});
-
-/**
  * POST /api/documents/:id/embed
  * Generate embeddings for all chunks in a document
  */
@@ -238,6 +172,72 @@ router.post("/:id/embed", async (req: Request, res: Response) => {
     console.error("Embed error:", error);
     res.status(500).json({
       error: "Failed to generate embeddings",
+      message: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+/**
+ * GET /api/documents
+ * List all documents
+ */
+router.get("/", async (req: Request, res: Response) => {
+  try {
+    const documents = await prisma.document.findMany({
+      select: {
+        id: true,
+        title: true,
+        filename: true,
+        uploadedAt: true,
+        metadata: true,
+        _count: {
+          select: { chunks: true },
+        },
+      },
+      orderBy: {
+        uploadedAt: "desc",
+      },
+    });
+
+    res.json(documents);
+  } catch (error) {
+    console.error("List documents error:", error);
+    res.status(500).json({
+      error: "Failed to fetch documents",
+      message: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+/**
+ * GET /api/documents/:id
+ * Get a specific document with its chunks
+ */
+router.get("/:id", async (req: Request, res: Response) => {
+  try {
+    const id = req.params.id;
+    if (!id) {
+      return res.status(400).json({ error: "Document ID is required" });
+    }
+
+    const document = await prisma.document.findUnique({
+      where: { id },
+      include: {
+        chunks: {
+          orderBy: { chunkIndex: "asc" },
+        },
+      },
+    });
+
+    if (!document) {
+      return res.status(404).json({ error: "Document not found" });
+    }
+
+    res.json(document);
+  } catch (error) {
+    console.error("Get document error:", error);
+    res.status(500).json({
+      error: "Failed to fetch document",
       message: error instanceof Error ? error.message : "Unknown error",
     });
   }

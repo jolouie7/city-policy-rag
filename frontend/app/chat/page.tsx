@@ -1,13 +1,22 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useRef } from 'react';
-import { ChatMessage } from '@/components/chat/ChatMessage';
-import { ChatInput } from '@/components/chat/ChatInput';
-import { SessionList } from '@/components/chat/SessionList';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { chatAPI, ragAPI } from '@/lib/api';
-import type { ChatSession, ChatMessage as ChatMessageType } from '@/lib/types';
+import { useState, useEffect, useRef } from "react";
+import { Menu } from "lucide-react";
+import { ChatMessage } from "@/components/chat/ChatMessage";
+import { ChatInput } from "@/components/chat/ChatInput";
+import { SessionList } from "@/components/chat/SessionList";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetTitle,
+  SheetVisuallyHidden,
+} from "@/components/ui/sheet";
+import { chatAPI, ragAPI } from "@/lib/api";
+import type { ChatSession, ChatMessage as ChatMessageType } from "@/lib/types";
 
 export default function ChatPage() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -15,6 +24,7 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Load sessions on mount
@@ -34,7 +44,7 @@ export default function ChatPage() {
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
   const loadSessions = async () => {
@@ -45,7 +55,7 @@ export default function ChatPage() {
         setCurrentSessionId(fetchedSessions[0].id);
       }
     } catch (err) {
-      setError('Failed to load sessions');
+      setError("Failed to load sessions");
       console.error(err);
     }
   };
@@ -56,7 +66,7 @@ export default function ChatPage() {
       setMessages(fetchedMessages);
       setError(null);
     } catch (err) {
-      setError('Failed to load messages');
+      setError("Failed to load messages");
       console.error(err);
     }
   };
@@ -67,19 +77,33 @@ export default function ChatPage() {
       setSessions([newSession, ...sessions]);
       setCurrentSessionId(newSession.id);
       setError(null);
+      setIsMobileSheetOpen(false); // Close sheet on mobile after creating session
     } catch (err) {
-      setError('Failed to create session');
+      setError("Failed to create session");
       console.error(err);
     }
   };
 
   const handleSelectSession = (sessionId: string) => {
     setCurrentSessionId(sessionId);
+    setIsMobileSheetOpen(false); // Close sheet on mobile when session is selected
+  };
+
+  const handleUpdateSession = async (sessionId: string, title: string) => {
+    try {
+      const updatedSession = await chatAPI.updateSession(sessionId, title);
+      setSessions((prev) =>
+        prev.map((s) => (s.id === sessionId ? updatedSession : s))
+      );
+    } catch (err) {
+      setError("Failed to update session");
+      console.error(err);
+    }
   };
 
   const handleSendMessage = async (content: string) => {
     if (!currentSessionId) {
-      setError('Please create or select a session first');
+      setError("Please create or select a session first");
       return;
     }
 
@@ -89,7 +113,7 @@ export default function ChatPage() {
     try {
       // Add user message
       const userMessage = await chatAPI.addMessage(currentSessionId, {
-        role: 'user',
+        role: "user",
         content,
       });
       setMessages((prev) => [...prev, userMessage]);
@@ -99,13 +123,13 @@ export default function ChatPage() {
 
       // Add assistant message with sources
       const assistantMessage = await chatAPI.addMessage(currentSessionId, {
-        role: 'assistant',
+        role: "assistant",
         content: ragResponse.answer,
         sources: ragResponse.sources,
       });
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (err) {
-      setError('Failed to send message');
+      setError("Failed to send message");
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -113,23 +137,53 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-4rem)]">
-      {/* Sidebar */}
-      <div className="w-80 border-r bg-muted/30 backdrop-blur-sm">
+    <div className="flex h-[calc(100vh-4rem)] relative">
+      {/* Desktop Sidebar */}
+      <div className="hidden md:block w-80 border-r bg-muted/30 backdrop-blur-sm">
         <SessionList
           sessions={sessions}
           currentSessionId={currentSessionId}
           onSelectSession={handleSelectSession}
           onNewSession={handleNewSession}
+          onUpdateSession={handleUpdateSession}
         />
       </div>
 
       {/* Main chat area */}
-      <div className="flex-1 flex flex-col bg-background">
-        <div className="px-6 py-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-            RAG Chat
-          </h1>
+      <div className="flex-1 flex flex-col bg-background w-full">
+        <div className="px-4 pt-4 pb-6 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="flex items-center gap-3">
+            {/* Mobile Sheet Sidebar */}
+            <Sheet open={isMobileSheetOpen} onOpenChange={setIsMobileSheetOpen}>
+              <SheetTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="md:hidden"
+                  aria-label="Toggle sidebar"
+                >
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="!w-[60%] p-0">
+                <SheetVisuallyHidden>
+                  <SheetTitle>Chat Sessions</SheetTitle>
+                </SheetVisuallyHidden>
+                <div className="pt-12">
+                  <SessionList
+                    sessions={sessions}
+                    currentSessionId={currentSessionId}
+                    onSelectSession={handleSelectSession}
+                    onNewSession={handleNewSession}
+                    onUpdateSession={handleUpdateSession}
+                  />
+                </div>
+              </SheetContent>
+            </Sheet>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+              RAG Chat
+            </h1>
+          </div>
           {error && (
             <div className="mt-3 p-3 bg-destructive/10 text-destructive rounded-lg text-sm border border-destructive/20">
               {error}
@@ -143,9 +197,12 @@ export default function ChatPage() {
               <div className="flex items-center justify-center h-full min-h-[400px]">
                 <div className="text-center space-y-4 max-w-md">
                   <div className="text-6xl mb-4">💬</div>
-                  <h2 className="text-xl font-semibold text-foreground">Start a conversation</h2>
+                  <h2 className="text-xl font-semibold text-foreground">
+                    Start a conversation
+                  </h2>
                   <p className="text-muted-foreground">
-                    Ask questions about your documents and get AI-powered answers with source citations
+                    Ask questions about your documents and get AI-powered
+                    answers with source citations
                   </p>
                 </div>
               </div>
@@ -155,15 +212,33 @@ export default function ChatPage() {
                   <ChatMessage key={message.id} message={message} />
                 ))}
                 {isLoading && (
-                  <div className="flex justify-start">
-                    <div className="bg-muted rounded-2xl px-4 py-3 border shadow-sm">
-                      <div className="flex items-center gap-2">
-                        <div className="flex gap-1">
-                          <div className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                          <div className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                          <div className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                  <div className="flex justify-start mb-4">
+                    <div className="max-w-[85%] sm:max-w-[75%] flex flex-col items-start">
+                      <div className="mb-1.5 px-1 text-left">
+                        <span className="text-xs font-medium text-muted-foreground">
+                          Chatbot
+                        </span>
+                      </div>
+                      <div className="bg-muted rounded-2xl rounded-tl-sm px-4 py-3 border-2 shadow-sm">
+                        <div className="flex items-center gap-2">
+                          <div className="flex gap-1">
+                            <div
+                              className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce"
+                              style={{ animationDelay: "0ms" }}
+                            ></div>
+                            <div
+                              className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce"
+                              style={{ animationDelay: "150ms" }}
+                            ></div>
+                            <div
+                              className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce"
+                              style={{ animationDelay: "300ms" }}
+                            ></div>
+                          </div>
+                          <span className="text-sm text-muted-foreground ml-2">
+                            Thinking...
+                          </span>
                         </div>
-                        <span className="text-sm text-muted-foreground ml-2">Thinking...</span>
                       </div>
                     </div>
                   </div>
@@ -178,7 +253,10 @@ export default function ChatPage() {
 
         <div className="p-4 sm:p-6 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t">
           <div className="max-w-4xl mx-auto">
-            <ChatInput onSubmit={handleSendMessage} disabled={isLoading || !currentSessionId} />
+            <ChatInput
+              onSubmit={handleSendMessage}
+              disabled={isLoading || !currentSessionId}
+            />
           </div>
         </div>
       </div>

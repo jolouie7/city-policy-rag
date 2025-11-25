@@ -42,8 +42,11 @@ router.post("/query", async (req: Request, res: Response) => {
     res.json({
       answer: response.choices[0]?.message.content || "",
       sources: results.map(([doc, score]) => ({
+        documentId: doc.metadata?.documentId || "",
+        documentTitle: doc.metadata?.documentTitle || "",
+        chunkId: doc.metadata?.chunkId || "",
         content: doc.pageContent,
-        score: score,
+        similarity: score,
       })),
     });
   } catch (error) {

@@ -4,6 +4,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import documentsRouter from "./routes/documents.js";
 import ragRouter from "./routes/rag.js";
+import chatRouter from "./routes/chat.js";
 
 dotenv.config({ path: ".env" });
 
@@ -32,6 +33,7 @@ app.get("/health", (_req: Request, res: Response) => {
 // API Routes
 app.use("/api/documents", documentsRouter);
 app.use("/api/rag", ragRouter);
+app.use("/api/chat", chatRouter);
 
 // Start server
 app.listen(PORT, () => {

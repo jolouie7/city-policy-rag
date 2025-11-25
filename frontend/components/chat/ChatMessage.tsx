@@ -8,10 +8,18 @@ interface ChatMessageProps {
 
 export function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === 'user';
+  const senderName = isUser ? 'You' : 'Chatbot';
 
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-6`}>
+    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
       <div className={`max-w-[85%] sm:max-w-[75%] ${isUser ? 'flex flex-col items-end' : 'flex flex-col items-start'}`}>
+        {/* Sender name indicator */}
+        <div className={`mb-1.5 px-1 ${isUser ? 'text-right' : 'text-left'}`}>
+          <span className="text-xs font-medium text-muted-foreground">
+            {senderName}
+          </span>
+        </div>
+        
         <Card 
           className={`p-4 sm:p-5 shadow-sm ${
             isUser 
