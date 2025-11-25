@@ -78,6 +78,7 @@ export function DocumentList({
             <div className="flex flex-wrap gap-2 sm:flex-shrink-0">
               {!doc.embeddingsGenerated && (
                 <Button
+                  key={`generate-embeddings-${doc.id}`}
                   variant="outline"
                   size="sm"
                   onClick={() => onGenerateEmbeddings(doc.id)}
@@ -87,6 +88,7 @@ export function DocumentList({
                 </Button>
               )}
               <Button
+                key={`delete-${doc.id}`}
                 variant="destructive"
                 size="sm"
                 onClick={() => onDelete(doc.id)}
